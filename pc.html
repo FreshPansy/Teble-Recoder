@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Recorder</title>
+    <style>
+        :root {
+            --bg: #1a1c1e; --card-bg: #2d2f31; --border: #444; --text: #f0f0f0;
+            --accent: #4f46e5; --atk-bg: #4a1d1d; --crit-bg: #1d2d4a; --elem-bg: #301d4a; --sharp-bg: #4a441d;
+            --atk-border: #ff4d4d; --crit-border: #3399ff; --elem-border: #b366ff; --sharp-border: #ffd700;
+            --gold-bg: #d4af37;
+            --highlight: rgba(255, 255, 255, 0.15);
+        }
+        body { font-family: 'Segoe UI', Meiryo, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 1250px; display: flex; flex-direction: column; gap: 15px; }
+
+        .tab-group { display: flex; gap: 5px; width: 100%; }
+        .tab-btn { background: #333; color: #888; border: none; padding: 12px 25px; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-bottom: none; }
+
+        .config-panel { background: var(--card-bg); padding: 15px; border-radius: 0 12px 12px 12px; border: 1px solid var(--border); }
+        .setup-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        select { background: #3d3f41; color: white; border: 1px solid #555; padding: 10px; border-radius: 6px; flex: 1; outline: none; }
+
+        .status-display { height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 1px solid #444; padding-top: 5px; }
+        .buffer-preview { display: flex; gap: 8px; height: 40px; align-items: center; justify-content: center; }
+        .preview-item { background: #1a1c1e; border: 1px solid #555; width: 85px; height: 32px; line-height: 32px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-align: center; }
+
+        .view-content { display: none; }
+        .view-content.active { display: block; }
+
+        .input-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .category-box { position: relative; border-radius: 12px; padding: 35px 12px 12px 12px; border: 2px solid #555; text-align: center; }
+        .cat-tag { position: absolute; top: 8px; left: 12px; font-size: 0.75rem; font-weight: bold; opacity: 0.8; letter-spacing: 1px; }
+        .box-atk { background: var(--atk-bg); border-color: var(--atk-border); }
+        .box-crit { background: var(--crit-bg); border-color: var(--crit-border); }
+        .box-elem { background: var(--elem-bg); border-color: var(--elem-border); }
+        .box-sharp { background: var(--sharp-bg); border-color: var(--sharp-border); }
+
+        .btn-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .btn { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 30px 0; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.4rem; }
+        .r-ex { background: var(--gold-bg); color: #000; border-color: #fff; }
+
+        .skill-container { display: flex; flex-direction: column; gap: 12px; }
+        .skill-line { background: #36383a; padding: 25px; border-radius: 12px; display: flex; align-items: center; gap: 30px; border: 1px solid #555; }
+        .ox-btn { width: 100px; height: 80px; border-radius: 12px; border: 2px solid #555; cursor: pointer; font-weight: 900; background: #3d3f41; color: #fff; font-size: 2.5rem; display: flex; align-items: center; justify-content: center; }
+        .ox-btn.selected-o { background: var(--accent); border-color: #fff; box-shadow: 0 0 15px var(--accent); }
+
+        .log-section { margin-top: 20px; width: 100%; }
+        .log-header-tools { display: flex; justify-content: space-between; align-items: flex-end; padding: 0 5px; }
+        .table-container { background: var(--card-bg); border-radius: 12px; overflow-x: auto; border: 1px solid var(--border); margin-top: 8px; scroll-behavior: smooth; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; table-layout: fixed; }
+        th, td { padding: 10px; text-align: center; border: 1px solid #333; width: 110px; min-width: 110px; }
+        th { background: #36383a; color: #aaa; cursor: pointer; }
+        .weapon-name-cell { background: #111; text-align: left; font-weight: bold; color: var(--accent); width: 180px; min-width: 180px; position: sticky; left: 0; z-index: 20; border-right: 2px solid #444; }
+        
+        .gold-highlight { background: var(--gold-bg) !important; color: #000 !important; font-weight: bold; }
+        .col-highlight { background-color: var(--highlight) !important; }
+        .col-header-active { background: var(--accent) !important; color: white !important; }
+        
+        .action-bar { display: flex; gap: 8px; }
+        .cur-rd-disp { background: #111; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 8px; width: 60px; text-align: center; font-weight: bold; font-size: 1.1rem; outline: none; }
+        .next-btn { background: #ff9800; color: #000; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        .clear-btn { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.75rem; }
+
+        #settingsModal, #editModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 15px; width: 600px; max-height: 85vh; overflow-y: auto; }
+        .skill-editor-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tab-group">
+        <button id="tab-btn-normal" class="tab-btn active" onclick="switchView('normal')">通常抽選</button>
+        <button id="tab-btn-skill" class="tab-btn" onclick="switchView('skill')">スキル抽選</button>
+        <button class="tab-btn" style="margin-left:auto; font-size:0.8rem;" onclick="openSettings()">リスト編集</button>
+    </div>
+
+    <div class="config-panel">
+        <div class="setup-row">
+            <select id="catSelect"></select>
+            <select id="elemSelect"></select>
+            <select id="numSelect">
+                <option value="1">1本目</option><option value="2">2本目</option><option value="3">3本目</option><option value="4">4本目</option><option value="5">5本目</option>
+            </select>
+        </div>
+        <div class="status-display">
+            <div id="curWeaponDisp" style="font-weight:bold; color:#888;">READY</div>
+            <div class="buffer-preview" id="previewArea"></div>
+            <button style="margin-top:10px; background:none; border:1px solid #555; color:#888; cursor:pointer; padding:5px 15px; border-radius:4px;" onclick="undo()">Undo</button>
+        </div>
+    </div>
+
+    <div id="view-normal" class="view-content active">
+        <div class="input-grid">
+            <div class="category-box box-atk"><span class="cat-tag">攻撃</span><div class="btn-group">
+                <button class="btn" onclick="addValue('攻Ⅰ')">Ⅰ</button><button class="btn" onclick="addValue('攻Ⅱ')">Ⅱ</button><button class="btn" onclick="addValue('攻Ⅲ')">Ⅲ</button><button class="btn r-ex" onclick="addValue('攻EX')">EX</button>
+            </div></div>
+            <div class="category-box box-crit"><span class="cat-tag">会心</span><div class="btn-group">
+                <button class="btn" onclick="addValue('会Ⅰ')">Ⅰ</button><button class="btn" onclick="addValue('会Ⅱ')">Ⅱ</button><button class="btn" onclick="addValue('会Ⅲ')">Ⅲ</button><button class="btn r-ex" onclick="addValue('会EX')">EX</button>
+            </div></div>
+            <div class="category-box box-elem"><span class="cat-tag">属性</span><div class="btn-group">
+                <button class="btn" onclick="addValue('属Ⅰ')">Ⅰ</button><button class="btn" onclick="addValue('属Ⅱ')">Ⅱ</button><button class="btn" onclick="addValue('属Ⅲ')">Ⅲ</button><button class="btn r-ex" onclick="addValue('属EX')">EX</button>
+            </div></div>
+            <div class="category-box box-sharp"><span class="cat-tag">斬/数</span><div class="btn-group">
+                <button class="btn" onclick="addValue('斬Ⅰ')">Ⅰ</button><button class="btn" onclick="addValue('斬Ⅱ')">Ⅱ</button><button class="btn" onclick="addValue('斬Ⅲ')">Ⅲ</button><button class="btn r-ex" onclick="addValue('斬EX')">EX</button>
+            </div></div>
+        </div>
+    </div>
+
+    <div id="view-skill" class="view-content">
+        <div class="skill-container">
+            <div class="skill-line">
+                <div style="min-width:120px; font-weight:bold;">抽選 1</div>
+                <div class="ox-group"><button class="ox-btn" id="s1-o" onclick="setSkillStatus(1, '○')">○</button><button class="ox-btn" id="s1-x" onclick="setSkillStatus(1, '×')">×</button></div>
+                <select id="skill1Select" style="flex:1; padding:15px; background:#111; color:#fff; display:none; border:2px solid var(--accent); border-radius:8px; font-size:1.1rem;" onchange="updateSkillPreview(1)"></select>
+            </div>
+            <div class="skill-line">
+                <div style="min-width:120px; font-weight:bold;">抽選 2</div>
+                <div class="ox-group"><button class="ox-btn" id="s2-o" onclick="setSkillStatus(2, '○')">○</button><button class="ox-btn" id="s2-x" onclick="setSkillStatus(2, '×')">×</button></div>
+                <select id="skill2Select" style="flex:1; padding:15px; background:#111; color:#fff; display:none; border:2px solid var(--accent); border-radius:8px; font-size:1.1rem;" onchange="updateSkillPreview(2)"></select>
+            </div>
+        </div>
+    </div>
+
+    <div class="log-section">
+        <div class="log-header-tools">
+            <h3 style="margin:0;">履歴</h3>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <span style="font-size:0.8rem; color:#aaa;">Rd:</span>
+                <input type="number" id="curRoundInput" class="cur-rd-disp" value="1" onchange="manualSetRound(this.value)">
+                <button class="next-btn" onclick="nextHighlight()">Next Rd. (→)</button>
+            </div>
+            <div class="action-bar">
+                <button class="clear-btn" onclick="clearAllData()">全消去</button>
+                <input type="file" id="csvFile" style="display:none" onchange="importCSV(event)">
+                <button style="background:#3b82f6; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;" onclick="document.getElementById('csvFile').click()">読込</button>
+                <button style="background:var(--accent); color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;" onclick="copyToClipboard()">SSコピー</button>
+                <button style="background:#10b981; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;" onclick="exportCSV()">保存</button>
+            </div>
+        </div>
+        <div id="tableContainer" class="table-container">
+            <div id="norm-table-wrap"><table><thead><tr id="head-normal"></tr></thead><tbody id="body-normal"></tbody></table></div>
+            <div id="skill-table-wrap" style="display:none;"><table><thead><tr id="head-skill"></tr></thead><tbody id="body-skill"></tbody></table></div>
+        </div>
+    </div>
+</div>
+
+<div id="settingsModal"><div class="modal-content"><h3>スキル管理（チェックで有効化）</h3><div class="skill-editor-columns" id="editorArea"></div><button class="tab-btn" style="margin-top:20px; width:100%; border-radius:8px;" onclick="document.getElementById('settingsModal').style.display='none'">閉じる</button></div></div>
+<div id="editModal"><div class="modal-content" style="width:400px;"><h3>項目修正</h3><div id="editOptions" style="display:flex; flex-direction:column; gap:10px;"></div><button class="tab-btn" style="background:#555; width:100%; margin-top:10px;" onclick="document.getElementById('editModal').style.display='none'">キャンセル</button></div></div>
+
+<script>
+    const elemColors = {"無":"#aaa","火":"#f44","水":"#39f","雷":"#fd0","氷":"#4ed","龍":"#e00","毒":"#d4f","麻痺":"#fc0","睡眠":"#0ce","爆破":"#f80"};
+    
+    // 全量リスト（不変）
+    const MASTER_SKILLS_1 = [
+        "闢獣の力（力自慢）", "火竜の力（灼熱化）", "兇爪竜の力（連撃強化）", "護鎖刃竜の命脈（破壊衝動）",
+        "波衣竜の守護（守護のヴェール）", "煌雷竜の力（雷々響鳴）", "雷顎竜の闘志（無尽蔵）", "雪獅子の闘志（ウォークライ）",
+        "鎧竜の守護（無傷の重装）", "凍峰竜の反逆（束縛反攻）", "暗器蛸の力（蛮勇の食卓）", "獄焔蛸の反逆（恨撃）",
+        "黒蝕竜の力（黒蝕一体）", "鎖刃竜の飢餓（加速再生）", "泡狐竜の力（泡沫の舞）", "白熾龍の脈動（超回復力）",
+        "花舞の祈り（地の恵み）", "千刃竜の闘志（千刃の身躱し）", "海竜の渦雷（蒼雷一閃）", "踊火の祈り（地の恵み）",
+        "暗黒騎士の証（ダークアーツ）", "オメガレゾナンス", "夢灯の祈り（地の恵み）", "巨戟龍の黙示録（宣戦呼応）"
+    ];
+    const MASTER_SKILLS_2 = [
+        "鱗張りの技法（乗り名人）", "革細工の柔性（採集の達人）", "毛皮の昂揚（不屈）", "甲虫の知らせ（ハニーハンター）",
+        "護竜の脈動（竜乳活性）", "ヌシの誇り（激励）", "甲虫の擬態（忍び歩き）", "革細工の滑性（滑走強化）",
+        "鱗重ねの工夫（奮起）", "毛皮の誘惑（陽動）", "護竜の守り（竜都の護り）", "ヌシの憤激（死中に活）",
+        "先達の導き（探索者の幸運）", "栄光の誉れ（幸運）", "祝祭の巡り（剥ぎ取り名人）", "ヌシの魂（根性【果敢】）",
+        "拳を極めし者（殺意の波動）"
+    ];
+
+    let skillEnabledMap = {}; 
+    let dataNormal = {}, dataSkill = {}, currentBuffer = [], activeMode = 'normal', globalActiveColIdx = 1;
+
+    window.onload = function() {
+        const catS = document.getElementById('catSelect'); const eleS = document.getElementById('elemSelect');
+        ["大剣","太刀","片手剣","双剣","ハンマー","狩猟笛","スラアク","チャアク","ランス","ガンランス","操虫棍","弓","ライトボウガン","ヘビィボウガン"].forEach(v => catS.add(new Option(v, v)));
+        ["無","火","水","雷","氷","龍","毒","麻痺","睡眠","爆破"].forEach(v => eleS.add(new Option(v, v)));
+        catS.onchange = eleS.onchange = document.getElementById('numSelect').onchange = () => { updateUI(); renderTable(); };
+        
+        loadFromCache();
+        switchView('normal');
+        refreshSkillDropdowns();
+    };
+
+    function saveToCache() {
+        localStorage.setItem('augment_recorder_v3', JSON.stringify({ dataNormal, dataSkill, skillEnabledMap, globalActiveColIdx }));
+    }
+
+    function loadFromCache() {
+        const cache = localStorage.getItem('augment_recorder_v3');
+        if (cache) {
+            const p = JSON.parse(cache);
+            dataNormal = p.dataNormal || {}; dataSkill = p.dataSkill || {};
+            skillEnabledMap = p.skillEnabledMap || {};
+            globalActiveColIdx = p.globalActiveColIdx || 1;
+            document.getElementById('curRoundInput').value = globalActiveColIdx;
+        } else {
+            MASTER_SKILLS_1.forEach(s => { if(s.includes('兇爪竜') || s.includes('護鎖刃') || s.includes('波衣') || s.includes('煌雷') || s.includes('雷顎') || s.includes('凍峰') || s.includes('獄焔') || s.includes('黒蝕') || s.includes('鎖刃') || s.includes('泡狐') || s.includes('白熾') || s.includes('千刃') || s.includes('海竜') || s.includes('暗黒騎士') || s.includes('オメガ') || s.includes('巨戟')) skillEnabledMap[s] = true; });
+            skillEnabledMap["ヌシの魂（根性【果敢】）"] = true;
+        }
+    }
+
+    function clearAllData() {
+        if (confirm("全ての履歴を消去しますか？")) {
+            dataNormal = {}; dataSkill = {}; saveToCache(); renderTable();
+        }
+    }
+
+    function switchView(mode) {
+        activeMode = mode;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-btn-' + mode));
+        document.getElementById('view-normal').classList.toggle('active', mode === 'normal');
+        document.getElementById('view-skill').classList.toggle('active', mode === 'skill');
+        document.getElementById('norm-table-wrap').style.display = (mode === 'normal' ? 'block' : 'none');
+        document.getElementById('skill-table-wrap').style.display = (mode === 'skill' ? 'block' : 'none');
+        
+        const area = document.getElementById('previewArea'); area.innerHTML = '';
+        const count = (mode === 'normal' ? 5 : 2);
+        for(let i=0; i<count; i++) {
+            const div = document.createElement('div'); div.className = 'preview-item'; div.id = 'prev-' + i; area.appendChild(div);
+        }
+        updateUI(); renderTable(); autoScrollToCol();
+    }
+
+    window.addValue = function(val) {
+        if(currentBuffer.length < 5) {
+            currentBuffer.push(val); updateUI();
+            if(currentBuffer.length === 5) setTimeout(saveRound, 150);
+        }
+    };
+
+    function saveRound() {
+        const name = document.getElementById('catSelect').value + "-" + document.getElementById('elemSelect').value + "-" + document.getElementById('numSelect').value;
+        const target = (activeMode === 'normal' ? dataNormal : dataSkill);
+        if(!target[name]) target[name] = [];
+        target[name].push([...currentBuffer]);
+        currentBuffer = []; 
+        document.querySelectorAll('.ox-btn').forEach(b => { b.classList.remove('selected-o'); b.classList.remove('selected-x'); });
+        document.getElementById('skill1Select').style.display = 'none'; document.getElementById('skill2Select').style.display = 'none';
+        updateUI(); renderTable(); saveToCache();
+    }
+
+    window.manualSetRound = function(val) {
+        globalActiveColIdx = parseInt(val) || 1;
+        renderTable(); saveToCache(); autoScrollToCol();
+    };
+
+    window.nextHighlight = function() {
+        globalActiveColIdx++;
+        document.getElementById('curRoundInput').value = globalActiveColIdx;
+        renderTable(); saveToCache(); autoScrollToCol();
+    };
+
+    function autoScrollToCol() {
+        const container = document.getElementById('tableContainer');
+        if (globalActiveColIdx <= 1) { container.scrollLeft = 0; return; }
+        container.scrollLeft = (globalActiveColIdx - 1) * 110;
+    }
+
+    function renderTable() {
+        const mode = activeMode;
+        const targetData = (mode === 'normal' ? dataNormal : dataSkill);
+        const maxR = Object.values(targetData).reduce((max, arr) => Math.max(max, arr.length), 0);
+        const currentLimit = Math.max(maxR, globalActiveColIdx);
+        const body = document.getElementById(mode === 'normal' ? 'body-normal' : 'body-skill');
+        const head = document.getElementById(mode === 'normal' ? 'head-normal' : 'head-skill');
+        const rows = (mode === 'normal' ? 5 : 2);
+        const curW = document.getElementById('catSelect').value + "-" + document.getElementById('elemSelect').value + "-" + document.getElementById('numSelect').value;
+
+        head.innerHTML = '<th class="weapon-name-cell">武器名</th>';
+        for(let i=1; i<=currentLimit; i++) {
+            const th = document.createElement('th'); th.innerText = `Rd.${i}`;
+            if(i === globalActiveColIdx) th.classList.add('col-header-active');
+            th.onclick = () => { globalActiveColIdx = i; document.getElementById('curRoundInput').value = i; renderTable(); saveToCache(); };
+            head.appendChild(th);
+        }
+
+        body.innerHTML = '';
+        Object.keys(targetData).sort((a,b) => (a===curW?-1:b===curW?1:a.localeCompare(b))).forEach(wName => {
+            const color = elemColors[wName.split('-')[1]] || "#eee";
+            for(let i=0; i<rows; i++){
+                const tr = document.createElement('tr');
+                if(i===0) tr.innerHTML = `<td class="weapon-name-cell" rowspan="${rows}" style="color:${color}">${wName}</td>`;
+                for(let r=0; r<currentLimit; r++){
+                    const val = targetData[wName][r] ? targetData[wName][r][i] : "";
+                    const td = document.createElement('td'); 
+                    td.innerText = (val||"").replace(/（.*?）/g, "");
+                    if(val) {
+                        td.className = 'editable';
+                        if((mode === 'normal' && val.includes('EX')) || (mode === 'skill' && val !== '×')) td.classList.add('gold-highlight');
+                        td.onclick = () => openEditModal(wName, r, i, mode);
+                    }
+                    if(r + 1 === globalActiveColIdx) td.classList.add('col-highlight');
+                    tr.appendChild(td);
+                }
+                body.appendChild(tr);
+            }
+        });
+    }
+
+    function openEditModal(wName, rnd, row, mode) {
+        const area = document.getElementById('editOptions'); area.innerHTML = '';
+        if (mode === 'normal') {
+            const n = prompt("修正:", dataNormal[wName][rnd][row]);
+            if(n) { dataNormal[wName][rnd][row] = n; renderTable(); saveToCache(); }
+        } else {
+            const btnX = document.createElement('button');
+            btnX.className = 'v-btn'; btnX.style.background = '#666'; btnX.innerText = '× (なし)';
+            btnX.onclick = () => { dataSkill[wName][rnd][row] = '×'; document.getElementById('editModal').style.display='none'; renderTable(); saveToCache(); };
+            area.appendChild(btnX);
+            const list = (row === 0 ? MASTER_SKILLS_1 : MASTER_SKILLS_2);
+            list.filter(s => skillEnabledMap[s]).forEach(s => {
+                const b = document.createElement('button'); b.className = 'v-btn'; b.innerText = s.replace(/（.*?）/g, "");
+                b.onclick = () => { dataSkill[wName][rnd][row] = s; document.getElementById('editModal').style.display='none'; renderTable(); saveToCache(); };
+                area.appendChild(b);
+            });
+            document.getElementById('editModal').style.display = 'flex';
+        }
+    }
+
+    window.updateUI = function() {
+        const name = document.getElementById('catSelect').value + "-" + document.getElementById('elemSelect').value + "-" + document.getElementById('numSelect').value;
+        document.getElementById('curWeaponDisp').innerText = name;
+        const count = (activeMode === 'normal' ? 5 : 2);
+        for(let i=0; i<count; i++) {
+            const el = document.getElementById('prev-' + i); if(el) el.innerText = (currentBuffer[i]||"").replace(/（.*?）/g, "");
+        }
+    };
+
+    window.undo = function() { currentBuffer.pop(); updateUI(); };
+
+    window.setSkillStatus = function(slot, status) {
+        document.getElementById('s'+slot+'-o').classList.toggle('selected-o', status === '○');
+        document.getElementById('s'+slot+'-x').classList.toggle('selected-x', status === '×');
+        const sel = document.getElementById('skill'+slot+'Select');
+        sel.style.display = (status === '○' ? 'block' : 'none');
+        currentBuffer[slot-1] = (status === '×' ? '×' : sel.value);
+        updateUI(); if(currentBuffer[0] && currentBuffer[1]) setTimeout(saveRound, 300);
+    }
+
+    window.updateSkillPreview = function(slot) {
+        if(document.getElementById('s'+slot+'-o').classList.contains('selected-o')) {
+            currentBuffer[slot-1] = document.getElementById('skill'+slot+'Select').value;
+            updateUI(); if(currentBuffer[0] && currentBuffer[1]) setTimeout(saveRound, 300);
+        }
+    }
+
+    function refreshSkillDropdowns() {
+        const s1 = document.getElementById('skill1Select'); const s2 = document.getElementById('skill2Select');
+        s1.innerHTML = ''; s2.innerHTML = '';
+        MASTER_SKILLS_1.filter(s => skillEnabledMap[s]).forEach(s => s1.add(new Option(s, s)));
+        MASTER_SKILLS_2.filter(s => skillEnabledMap[s]).forEach(s => s2.add(new Option(s, s)));
+    }
+
+    function openSettings() {
+        const area = document.getElementById('editorArea'); area.innerHTML = '';
+        [MASTER_SKILLS_1, MASTER_SKILLS_2].forEach((list, idx) => {
+            const div = document.createElement('div');
+            div.innerHTML = `<div style="color:var(--accent); font-weight:bold; margin-bottom:10px;">リスト ${idx+1}</div>`;
+            list.forEach((s) => {
+                const item = document.createElement('div'); item.style = "margin-bottom:5px;";
+                item.innerHTML = `<input type="checkbox" ${skillEnabledMap[s]?'checked':''} onchange="skillEnabledMap['${s}']=this.checked; refreshSkillDropdowns(); saveToCache();"> <span style="font-size:0.75rem;">${s}</span>`;
+                div.appendChild(item);
+            });
+            area.appendChild(div);
+        });
+        document.getElementById('settingsModal').style.display = 'flex';
+    }
+
+    function exportCSV() {
+        let csv = "\uFEFFTYPE,Weapon,Rd1,Rd2,Rd3,Rd4,Rd5\n";
+        const writeData = (data, prefix) => { Object.keys(data).forEach(w => { data[w].forEach(rnd => { csv += `${prefix},${w},${rnd.join(',')}\n`; }); }); };
+        writeData(dataNormal, 'NORMAL'); writeData(dataSkill, 'SKILL');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'record.csv'; a.click();
+    }
+
+    function importCSV(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const lines = e.target.result.split('\n');
+            dataNormal = {}; dataSkill = {};
+            lines.forEach((line, i) => {
+                if (i === 0 || !line.trim()) return;
+                const cols = line.split(','); const type = cols[0]; const key = cols[1];
+                if (type === 'NORMAL') { if (!dataNormal[key]) dataNormal[key] = []; dataNormal[key].push([cols[2], cols[3], cols[4], cols[5], cols[6]]); }
+                else if (type === 'SKILL') { if (!dataSkill[key]) dataSkill[key] = []; dataSkill[key].push([cols[2], cols[3]]); }
+            });
+            renderTable(); saveToCache(); alert("読込完了");
+        };
+        reader.readAsText(file);
+    }
+
+    function copyToClipboard() {
+        const target = (activeMode === 'normal' ? dataNormal : dataSkill);
+        const maxR = Object.values(target).reduce((max, arr) => Math.max(max, arr.length), 0);
+        const rows = (activeMode === 'normal' ? 5 : 2);
+        let tsv = "";
+        Object.keys(target).sort().forEach(id => {
+            for(let i=0; i<rows; i++){ tsv += (i === 0 ? id : "") + "\t"; for(let r=0; r<maxR; r++) tsv += (target[id][r] ? target[id][r][i] : "") + "\t"; tsv += "\n"; }
+        });
+        navigator.clipboard.writeText(tsv).then(() => alert("コピーしました"));
+    }
+</script>
+</body>
+</html>
