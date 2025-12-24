@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Table Recorder PC</title>
+    <title>Table Recoder PC</title>
     <style>
         :root {
             --bg: #1a1c1e; --card-bg: #2d2f31; --border: #444; --text: #f0f0f0;
@@ -22,32 +22,24 @@
         .setup-row { display: grid; grid-template-columns: 1fr 1fr 0.6fr 0.8fr; gap: 10px; margin-bottom: 15px; }
         select { background: #3d3f41; color: white; border: 1px solid #555; padding: 10px; border-radius: 6px; outline: none; }
 
-        /* ステータス & 逆算エリア */
         .status-and-calc { display: grid; grid-template-columns: 1fr 1.8fr; gap: 20px; border-top: 1px solid #444; padding-top: 15px; }
-        
-        /* 左側：バッファ表示 */
         .status-display { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .buffer-preview { display: flex; gap: 8px; height: 40px; align-items: center; justify-content: center; }
         .preview-item { background: #1a1c1e; border: 1px solid #555; width: 85px; height: 32px; line-height: 32px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; text-align: center; }
 
-        /* 右側：常駐型 逆算UI（縦並び調整版） */
         .calc-permanent-ui { display: grid; grid-template-columns: 1fr auto; gap: 15px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid #444; }
         .input-columns { display: flex; flex-direction: column; gap: 12px; }
         .parts-header-labels { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 8px; text-align: center; }
         .parts-header-labels span { font-size: 0.7rem; color: var(--accent); font-weight: bold; }
-        
         .calc-line { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 8px; align-items: center; }
         .calc-line label { font-size: 0.75rem; color: #aaa; font-weight: bold; }
         .calc-line input { background: #111; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px; text-align: center; font-weight: bold; width: 100%; box-sizing: border-box; }
-        
         .est-rd-box { min-width: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-left: 2px solid #444; padding-left: 15px; }
         .est-rd-val { font-size: 2rem; font-weight: bold; color: var(--gold-bg); line-height: 1; }
         .est-label { font-size: 0.65rem; color: #888; margin-bottom: 5px; }
 
         .view-content { display: none; }
         .view-content.active { display: block; }
-
-        /* 入力グリッド */
         .input-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .category-box { position: relative; border-radius: 12px; padding: 35px 12px 12px 12px; border: 2px solid #555; text-align: center; }
         .cat-tag { position: absolute; top: 8px; left: 12px; font-size: 0.75rem; font-weight: bold; opacity: 0.8; letter-spacing: 1px; }
@@ -70,12 +62,12 @@
         .gold-highlight { background: var(--gold-bg) !important; color: #000 !important; font-weight: bold; }
         .col-highlight { background-color: var(--highlight) !important; }
         .col-header-active { background: var(--accent) !important; color: white !important; }
-
+        .cur-rd-disp { background: #111; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 8px; width: 60px; text-align: center; font-weight: bold; font-size: 1.1rem; }
         .fill-btn { background: #ff9800; color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .clear-btn { background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 15px; width: 600px; max-height: 85vh; overflow-y: auto; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 15px; width: 800px; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -84,7 +76,7 @@
     <div class="tab-group">
         <button id="tab-btn-normal" class="tab-btn active" onclick="switchView('normal')">通常抽選</button>
         <button id="tab-btn-skill" class="tab-btn" onclick="switchView('skill')">スキル抽選</button>
-        <button class="tab-btn" style="margin-left:auto; font-size:0.8rem;" onclick="openModal('settingsModal')">リスト編集</button>
+        <button class="tab-btn" style="margin-left:auto; font-size:0.8rem;" onclick="openModal('settingsModal')">スキル管理</button>
     </div>
 
     <div class="config-panel">
@@ -123,6 +115,10 @@
                         <input type="number" id="curCrit" oninput="calcRound()">
                         <input type="number" id="curElem" oninput="calcRound()">
                     </div>
+                    <div class="copy-row">
+                        <span></span>
+                        <button style="background:none; border:1px solid #555; color:#888; cursor:pointer; padding:5px 15px; border-radius:4px;"onclick="copyPartsToCurrent()">確認前をコピー</button>
+                    </div>
                 </div>
                 <div class="est-rd-box">
                     <span class="est-label">推定現在Round</span>
@@ -146,12 +142,12 @@
         <div class="skill-line">
             <div style="min-width:100px; font-weight:bold;">抽選 1</div>
             <div class="ox-group"><button class="ox-btn" id="s1-o" onclick="setSkillStatus(1, '○')">○</button><button class="ox-btn" id="s1-x" onclick="setSkillStatus(1, '×')">×</button></div>
-            <select id="skill1Select" class="skill-sel" style="display:none; margin-left:20px;" onchange="updateSkillPreview(1)"></select>
+            <select id="skill1Select" class="skill-sel" style="display:none; margin-left:20px; padding:10px;" onchange="updateSkillPreview(1)"></select>
         </div>
         <div class="skill-line">
             <div style="min-width:100px; font-weight:bold;">抽選 2</div>
             <div class="ox-group"><button class="ox-btn" id="s2-o" onclick="setSkillStatus(2, '○')">○</button><button class="ox-btn" id="s2-x" onclick="setSkillStatus(2, '×')">×</button></div>
-            <select id="skill2Select" class="skill-sel" style="display:none; margin-left:20px;" onchange="updateSkillPreview(2)"></select>
+            <select id="skill2Select" class="skill-sel" style="display:none; margin-left:20px; padding:10px;" onchange="updateSkillPreview(2)"></select>
         </div>
     </div>
 
@@ -180,9 +176,23 @@
 
 <script>
     const elemColors = {"無":"#aaa","火":"#f44","水":"#39f","雷":"#fd0","氷":"#4ed","龍":"#e00","毒":"#d4f","麻痺":"#fc0","睡眠":"#0ce","爆破":"#f80"};
-    const MASTER_SKILLS_1 = ["闢獣の力（力自慢）", "火竜の力（灼熱化）", "兇爪竜の力（連撃強化）", "護鎖刃竜の命脈（破壊衝動）", "波衣竜の守護", "煌雷竜の力", "雷顎竜の闘志", "雪獅子の闘志", "鎧竜の守護", "凍峰竜の反逆", "暗器蛸の力", "獄焔蛸の反逆", "黒蝕竜の力", "鎖刃竜の飢餓", "泡狐竜の力", "白熾龍の脈動", "花舞の祈り", "千刃竜の闘志", "海竜の渦雷", "踊火の祈り", "暗黒騎士の証", "オメガレゾナンス", "夢灯の祈り", "巨戟龍の黙示録"];
-    const MASTER_SKILLS_2 = ["鱗張りの技法", "革細工の柔性", "毛皮の昂揚", "甲虫の知らせ", "護竜の脈動", "ヌシの誇り", "甲虫の擬態", "革細工の滑性", "鱗重ねの工夫", "毛皮の誘惑", "護竜の守り", "ヌシの憤激", "先達の導き", "栄光の誉れ", "祝祭の巡り", "ヌシの魂（根性【果敢】）", "拳を極めし者"];
+    // スキル名リスト
+    const MASTER_SKILLS_1 = [
+        "闢獣の力（力自慢）", "火竜?力（灼熱化）", "兇爪竜の力（連撃強化）", "護鎖刃竜の命脈（破壊衝動）",
+        "波衣竜の守護（守護のヴェール）", "煌雷竜の力（雷々響鳴）", "雷顎竜の闘志（無尽蔵）", "雪獅子の闘志（ウォークライ）",
+        "鎧竜の守護（無傷の重装）", "凍峰竜の反逆（束縛反攻）", "暗器蛸の力（蛮勇の食卓）", "獄焔蛸の反逆（恨撃）",
+        "黒蝕竜の力（黒蝕一体）", "鎖刃竜の飢餓（加速再生）", "泡狐竜の力（泡沫の舞）", "白熾龍の脈動（超回復力）",
+        "花舞の祈り（地の恵み）", "千刃竜の闘志（千刃の身躱し）", "海竜の渦雷（蒼雷一閃）", "踊火の祈り（地の恵み）",
+        "暗黒騎士の証（ダークアーツ）", "オメガレゾナンス", "夢灯の祈り（地の恵み）", "巨戟龍の黙示録（宣戦呼応）"
+        ];
 
+    const MASTER_SKILLS_2 = [
+        "鱗張りの技法（乗り名人）", "革細工の柔性（採集の達人）", "毛皮の昂揚（不屈）", "甲虫の知らせ（ハニーハンター）",
+        "護竜の脈動（竜乳活性）", "ヌシの誇り（激励）", "甲虫の擬態（忍び歩き）", "革細工の滑性（滑走強化）",
+        "鱗重ねの工夫（奮起）", "毛皮の誘惑（陽動）", "護竜の守り（竜都の護り）", "ヌシの憤激（死中に活）",
+        "先達の導き（探索者の幸運）", "栄光の誉れ（幸運）", "祝祭の巡り（剥ぎ取り名人）", "ヌシの魂（根性【果敢】）",
+        "拳を極めし者（殺意の波動）"
+        ];
     let skillEnabledMap = {}; 
     let dataNormal = {}, dataSkill = {}, currentBuffer = [], activeMode = 'normal', globalActiveColIdx = 1, estimatedRd = 0;
 
@@ -195,7 +205,7 @@
     };
 
     function saveCache() {
-        localStorage.setItem('aug_pc_vFixedFinal', JSON.stringify({
+        localStorage.setItem('aug_pc_vFinal_Fixed', JSON.stringify({
             dataNormal, dataSkill, skillEnabledMap, globalActiveColIdx,
             gekika: document.getElementById('gekikaType').value,
             pre: [document.getElementById('preAtk').value, document.getElementById('preCrit').value, document.getElementById('preElem').value],
@@ -204,7 +214,7 @@
     }
 
     function loadFromCache() {
-        const cache = localStorage.getItem('aug_pc_vFixedFinal');
+        const cache = localStorage.getItem('aug_pc_vFinal_Fixed');
         if (cache) {
             const p = JSON.parse(cache);
             dataNormal = p.dataNormal || {}; dataSkill = p.dataSkill || {};
@@ -214,30 +224,62 @@
             if(p.pre) { document.getElementById('preAtk').value=p.pre[0]; document.getElementById('preCrit').value=p.pre[1]; document.getElementById('preElem').value=p.pre[2]; }
             if(p.cur) { document.getElementById('curAtk').value=p.cur[0]; document.getElementById('curCrit').value=p.cur[1]; document.getElementById('curElem').value=p.cur[2]; }
         } else {
-            MASTER_SKILLS_1.forEach(s => { if(s.includes('兇爪')||s.includes('護鎖')||s.includes('波衣')||s.includes('煌雷')||s.includes('雷顎')) skillEnabledMap[s]=true; });
+            // 初期有効スキルの設定
+            MASTER_SKILLS_1.forEach(s => { 
+                if(s.includes('兇爪')||s.includes('護鎖')||s.includes('波衣')||s.includes('煌雷')||s.includes('雷顎')||s.includes('凍峰')||s.includes('獄焔')||s.includes('黒蝕')||s.includes('鎖刃')||s.includes('泡狐')||s.includes('白熾')||s.includes('千刃')||s.includes('海竜')||s.includes('暗黒騎士')||s.includes('オメガ')||s.includes('巨戟')) {
+                    skillEnabledMap[s] = true; 
+                }
+            });
             skillEnabledMap["ヌシの魂（根性【果敢】）"] = true;
         }
     }
+    function copyPartsToCurrent() {
+        document.getElementById('curAtk').value = document.getElementById('preAtk').value;
+        document.getElementById('curCrit').value = document.getElementById('preCrit').value;
+        document.getElementById('curElem').value = document.getElementById('preElem').value;
+        calcRound(); // コピー後に即計算
+        }
 
     function calcRound() {
         const type = document.getElementById('gekikaType').value;
         const pre = [parseInt(document.getElementById('preAtk').value)||0, parseInt(document.getElementById('preCrit').value)||0, parseInt(document.getElementById('preElem').value)||0];
         const cur = [parseInt(document.getElementById('curAtk').value)||0, parseInt(document.getElementById('curCrit').value)||0, parseInt(document.getElementById('curElem').value)||0];
+        
         let diff = [pre[0]-cur[0], pre[1]-cur[1], pre[2]-cur[2]];
-        if(type === 'atk') diff[0] *= 2; if(type === 'crit') diff[1] *= 2; if(type === 'elem') diff[2] *= 2;
+        if(type === 'atk') diff[0] *= 2; 
+        if(type === 'crit') diff[1] *= 2; 
+        if(type === 'elem') diff[2] *= 2;
+        
         const sum = diff[0] + diff[1] + diff[2];
-        const resEl = document.getElementById('resRd'); const errEl = document.getElementById('resErr');
-        if(sum === 0) { resEl.innerText = "---"; errEl.innerText = ""; estimatedRd = 0; return; }
+        const resEl = document.getElementById('resRd'); 
+    const errEl = document.getElementById('resErr');
+    
+        if(sum === 0) { 
+            // 差が0（まだ消費していない）場合は、1ラウンド目として扱う
+            estimatedRd = 1; 
+            resEl.innerText = "1"; 
+            errEl.innerText = "";
+            document.getElementById('curRoundInput').value = 1;
+            globalActiveColIdx = 1;
+            renderTable(); 
+            saveCache();
+            return; 
+        }
+    
         if(sum % 6 === 0 && sum > 0) {
-            estimatedRd = sum / 6; resEl.innerText = estimatedRd; errEl.innerText = "";
+            estimatedRd = sum / 6 + 1; // 消費パーツ数から計算されるのは「完了したRd」なので、次は +1 Rd
+            resEl.innerText = estimatedRd; 
+            errEl.innerText = "";
             document.getElementById('curRoundInput').value = estimatedRd;
-            globalActiveColIdx = estimatedRd; renderTable();
+            globalActiveColIdx = estimatedRd; 
+            renderTable();
         } else {
-            estimatedRd = 0; resEl.innerText = "???"; errEl.innerText = "パーツ数が異常";
+            estimatedRd = 0; 
+            resEl.innerText = "???"; 
+            errEl.innerText = "パーツ数が異常";
         }
         saveCache();
     }
-
     function autoFillX() {
         if(estimatedRd <= 1) return alert("逆算Rd不足");
         if(!confirm(`Rd.1?${estimatedRd-1} を全て「×」で埋めますか？`)) return;
@@ -375,10 +417,10 @@
     }
     function exportCSV() {
         let csv = "\uFEFFTYPE,Weapon,Rd1,Rd2,Rd3,Rd4,Rd5\n";
-        const writeData = (data, prefix) => { Object.keys(data).forEach(w => { data[w].forEach(rnd => { csv += `${prefix},${w},${rnd.join(',')}\n`; }); }); };
+        const writeData = (data, prefix) => { Object.keys(data).forEach(w => { if(data[w]) data[w].forEach(rnd => { csv += `${prefix},${w},${rnd.join(',')}\n`; }); }); };
         writeData(dataNormal, 'NORMAL'); writeData(dataSkill, 'SKILL');
         const blob = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'augment_records.csv'; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'records.csv'; a.click();
     }
 </script>
 </body>
